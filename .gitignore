@@ -1,3 +1,6 @@
+# the models
+model.*
+
 # IDE
 .idea
 

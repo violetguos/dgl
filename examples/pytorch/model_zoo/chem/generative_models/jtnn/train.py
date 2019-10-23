@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import sys
 import argparse
 import rdkit
+import numpy as np
 
 from jtnn import *
 
@@ -79,15 +80,17 @@ PRINT_ITER = 20
 
 
 def train():
+    subset_indices = np.arange(50)
     dataset.training = True
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=4,
         collate_fn=JTNNCollator(dataset.vocab, True),
         drop_last=True,
-        worker_init_fn=worker_init_fn)
+        worker_init_fn=worker_init_fn,
+        sampler=torch.utils.data.SubsetRandomSampler(subset_indices))
 
     for epoch in range(MAX_EPOCH):
         word_acc, topo_acc, assm_acc, steo_acc = 0, 0, 0, 0

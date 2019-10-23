@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 import argparse
 from dgl import model_zoo
 import rdkit
+import numpy as np
 
 from jtnn import *
 
@@ -24,7 +25,7 @@ parser.add_argument("-v", "--vocab", dest="vocab",
 parser.add_argument("-m", "--model", dest="model_path", default=None,
                     help="Pre-trained model to be loaded for evalutaion. If not specified,"
                          " would use pre-trained model from model zoo")
-parser.add_argument("-w", "--hidden", dest="hidden_size", default=450,
+parser.add_argument("-w", "--hidden", dest="hidden_size", default=200,
                     help="Hidden size of representation vector, "
                          "should be consistent with pre-trained model")
 parser.add_argument("-l", "--latent", dest="latent_size", default=56,
@@ -62,6 +63,8 @@ PRINT_ITER = 20
 
 
 def reconstruct():
+    subset_indices = np.arange(50)
+
     dataset.training = False
     dataloader = DataLoader(
         dataset,
@@ -70,7 +73,8 @@ def reconstruct():
         num_workers=0,
         collate_fn=JTNNCollator(dataset.vocab, False),
         drop_last=True,
-        worker_init_fn=worker_init_fn)
+        worker_init_fn=worker_init_fn,
+        sampler=torch.utils.data.SubsetRandomSampler(subset_indices))
 
     # Just an example of molecule decoding; in reality you may want to sample
     # tree and molecule vectors.
@@ -81,28 +85,28 @@ def reconstruct():
             gt_smiles = batch['mol_trees'][0].smiles
             # print(gt_smiles)
             model.move_to_cuda(batch)
-            try:
-                _, tree_vec, mol_vec = model.encode(batch)
+            # try:
+            _, tree_vec, mol_vec = model.encode(batch)
 
-                tree_mean = model.T_mean(tree_vec)
-                # Following Mueller et al.
-                tree_log_var = -torch.abs(model.T_var(tree_vec))
-                mol_mean = model.G_mean(mol_vec)
-                # Following Mueller et al.
-                mol_log_var = -torch.abs(model.G_var(mol_vec))
+            tree_mean = model.T_mean(tree_vec)
+            # Following Mueller et al.
+            tree_log_var = -torch.abs(model.T_var(tree_vec))
+            mol_mean = model.G_mean(mol_vec)
+            # Following Mueller et al.
+            mol_log_var = -torch.abs(model.G_var(mol_vec))
 
-                epsilon = torch.randn(1, model.latent_size // 2).cuda()
-                tree_vec = tree_mean + torch.exp(tree_log_var // 2) * epsilon
-                epsilon = torch.randn(1, model.latent_size // 2).cuda()
-                mol_vec = mol_mean + torch.exp(mol_log_var // 2) * epsilon
-                dec_smiles = model.decode(tree_vec, mol_vec)
+            epsilon = torch.randn(1, model.latent_size // 2) #.cuda()
+            tree_vec = tree_mean + torch.exp(tree_log_var // 2) * epsilon
+            epsilon = torch.randn(1, model.latent_size // 2) #.cuda()
+            mol_vec = mol_mean + torch.exp(mol_log_var // 2) * epsilon
+            dec_smiles = model.decode(tree_vec, mol_vec)
 
-                if dec_smiles == gt_smiles:
-                    acc += 1
-                tot += 1
-            except Exception as e:
-                print("Failed to encode: {}".format(gt_smiles))
-                print(e)
+            if dec_smiles == gt_smiles:
+                acc += 1
+            tot += 1
+            # except Exception as e:
+            #     print("Failed to encode: {}".format(gt_smiles))
+            #     print(e)
 
             if it % 20 == 1:
                 print("Progress {}/{}; Current Reconstruction Accuracy: {:.4f}".format(it,
