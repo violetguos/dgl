@@ -82,6 +82,8 @@ def reconstruct():
     tot = 0
     with torch.no_grad():
         for it, batch in enumerate(dataloader):
+            tot += 1
+
             gt_smiles = batch['mol_trees'][0].smiles
             # print(gt_smiles)
             model.move_to_cuda(batch)
@@ -103,7 +105,6 @@ def reconstruct():
 
                 if dec_smiles == gt_smiles:
                     acc += 1
-                tot += 1
             except Exception as e:
                 print("Failed to encode: {}".format(gt_smiles))
                 print(e)
