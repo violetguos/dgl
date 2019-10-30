@@ -88,7 +88,7 @@ def reconstruct():
         collate_fn=JTNNCollator(dataset.vocab, False),
         drop_last=True,
         worker_init_fn=worker_init_fn,
-        sampler=torch.utils.data.SubsetRandomSampler(subset_indices))
+        )
 
     # Just an example of molecule decoding; in reality you may want to sample
     # tree and molecule vectors.
