@@ -1,0 +1,28 @@
+{
+    "GitRepository": "git@bitbucket.org/invivoai/moms.git",
+    "GitBranch": "generative-models",
+    "GitInnerPath": "moms/src/generative_models/jtnn",
+    "InstanceCount": 2,
+    "MaxRuntime": 60,
+    "SpotPrice": "On-Demand",
+    "LaunchSpecification":  {
+                                "ImageId": "ami-075cf07e422882061",
+                                "KeyName": "dev",
+                                "SecurityGroupIds": ["sg-c576d9af"],
+                                "InstanceType": "t3.large",
+                                "Placement": {
+                                "AvailabilityZone": "us-east-2a"
+                                },
+                                "BlockDeviceMappings": [
+                                    {
+                                        "DeviceName": "/dev/sdb",
+                                        "Ebs": {
+                                            "DeleteOnTermination": true,
+                                            "VolumeSize": 10
+                                        }
+                                    }
+                                ]
+                            }
+}
+
+

@@ -1,0 +1,1 @@
+{"test_size": [0.1], "config": ["gp"], "max_n":[-1], "yscaler":["norm", "none", "minmax"]}

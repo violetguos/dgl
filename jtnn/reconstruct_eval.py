@@ -6,50 +6,64 @@ from dgl import model_zoo
 import rdkit
 import numpy as np
 
-from jtnn import *
-
+from jtnn.jtnn import *
+import json
 
 def worker_init_fn(id_):
     lg = rdkit.RDLogger.logger()
     lg.setLevel(rdkit.RDLogger.CRITICAL)
 
+# ap = {"train":'test',
+#       "vocab": 'vocab',
+#       "model_path": None,
+#       "hidden_size": 200,
+#       "latent_size": 56,
+#       "depth": 3}
+#
+# with open('expts/config_single_exp.json', 'w') as outfile:
+#     json.dump(ap, outfile)
+
+with open('expts/config_single_exp.json') as fp:
+    ap = json.load(fp)
 
 worker_init_fn(None)
 
-parser = argparse.ArgumentParser(description="Evaluation for JTNN",
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-t", "--train", dest="train",
-                    default='test', help='Training file name')
-parser.add_argument("-v", "--vocab", dest="vocab",
-                    default='vocab', help='Vocab file name')
-parser.add_argument("-m", "--model", dest="model_path", default=None,
-                    help="Pre-trained model to be loaded for evalutaion. If not specified,"
-                         " would use pre-trained model from model zoo")
-parser.add_argument("-w", "--hidden", dest="hidden_size", default=200,
-                    help="Hidden size of representation vector, "
-                         "should be consistent with pre-trained model")
-parser.add_argument("-l", "--latent", dest="latent_size", default=56,
-                    help="Latent Size of node(atom) features and edge(atom) features, "
-                         "should be consistent with pre-trained model")
-parser.add_argument("-d", "--depth", dest="depth", default=3,
-                    help="Depth of message passing hops, "
-                         "should be consistent with pre-trained model")
-args = parser.parse_args()
+# parser = argparse.ArgumentParser(description="Evaluation for JTNN",
+#                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# parser.add_argument("-t", "--train", dest="train",
+#                     default='test', help='Training file name')
+# parser.add_argument("-v", "--vocab", dest="vocab",
+#                     default='vocab', help='Vocab file name')
+# parser.add_argument("-m", "--model", dest="model_path", default=None,
+#                     help="Pre-trained model to be loaded for evalutaion. If not specified,"
+#                          " would use pre-trained model from model zoo")
+# parser.add_argument("-w", "--hidden", dest="hidden_size", default=200,
+#                     help="Hidden size of representation vector, "
+#                          "should be consistent with pre-trained model")
+# parser.add_argument("-l", "--latent", dest="latent_size", default=56,
+#                     help="Latent Size of node(atom) features and edge(atom) features, "
+#                          "should be consistent with pre-trained model")
+# parser.add_argument("-d", "--depth", dest="depth", default=3,
+#                     help="Depth of message passing hops, "
+#                          "should be consistent with pre-trained model")
+# args = parser.parse_args()
+args = ap
 
-dataset = JTNNDataset(data=args.train, vocab=args.vocab, training=False)
+
+dataset = JTNNDataset(data=args['train'], vocab=args['vocab'], training=False)
 vocab_file = dataset.vocab_file
 
-hidden_size = int(args.hidden_size)
-latent_size = int(args.latent_size)
-depth = int(args.depth)
+hidden_size = int(args['hidden_size'])
+latent_size = int(args['latent_size'])
+depth = int(args['depth'])
 
 model = model_zoo.chem.DGLJTNNVAE(vocab_file=vocab_file,
                                   hidden_size=hidden_size,
                                   latent_size=latent_size,
                                   depth=depth)
 
-if args.model_path is not None:
-    model.load_state_dict(torch.load(args.model_path))
+if args['model_path'] is not None:
+    model.load_state_dict(torch.load(args['model_path']))
 else:
     model = model_zoo.chem.load_pretrained("JTNN_ZINC")
 
