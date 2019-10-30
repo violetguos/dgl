@@ -1,0 +1,1 @@
+{"train": "test", "vocab": "vocab", "model_path": null, "hidden_size": 200, "latent_size": 56, "depth": 3}
