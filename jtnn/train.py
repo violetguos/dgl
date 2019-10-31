@@ -11,7 +11,7 @@ import rdkit
 import numpy as np
 
 from jtnn import *
-
+import json
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
@@ -22,45 +22,63 @@ def worker_init_fn(id_):
 
 worker_init_fn(None)
 
-parser = argparse.ArgumentParser(description="Training for JTNN",
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-t", "--train", dest="train", default='train', help='Training file name')
-parser.add_argument("-v", "--vocab", dest="vocab", default='vocab', help='Vocab file name')
-parser.add_argument("-s", "--save_dir", dest="save_path", default='./',
-                    help="Path to save checkpoint models, default to be current working directory")
-parser.add_argument("-m", "--model", dest="model_path", default=None,
-                    help="Path to load pre-trained model")
-parser.add_argument("-b", "--batch", dest="batch_size", default=40,
-                    help="Batch size")
-parser.add_argument("-w", "--hidden", dest="hidden_size", default=200,
-                    help="Size of representation vectors")
-parser.add_argument("-l", "--latent", dest="latent_size", default=56,
-                    help="Latent Size of node(atom) features and edge(atom) features")
-parser.add_argument("-d", "--depth", dest="depth", default=3,
-                    help="Depth of message passing hops")
-parser.add_argument("-z", "--beta", dest="beta", default=1.0,
-                    help="Coefficient of KL Divergence term")
-parser.add_argument("-q", "--lr", dest="lr", default=1e-3,
-                    help="Learning Rate")
-args = parser.parse_args()
+# parser = argparse.ArgumentParser(description="Training for JTNN",
+#                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# parser.add_argument("-t", "--train", dest="train", default='train', help='Training file name')
+# parser.add_argument("-v", "--vocab", dest="vocab", default='vocab', help='Vocab file name')
+# parser.add_argument("-s", "--save_dir", dest="save_path", default='./',
+#                     help="Path to save checkpoint models, default to be current working directory")
+# parser.add_argument("-m", "--model", dest="model_path", default=None,
+#                     help="Path to load pre-trained model")
+# parser.add_argument("-b", "--batch", dest="batch_size", default=40,
+#                     help="Batch size")
+# parser.add_argument("-w", "--hidden", dest="hidden_size", default=200,
+#                     help="Size of representation vectors")
+# parser.add_argument("-l", "--latent", dest="latent_size", default=56,
+#                     help="Latent Size of node(atom) features and edge(atom) features")
+# parser.add_argument("-d", "--depth", dest="depth", default=3,
+#                     help="Depth of message passing hops")
+# parser.add_argument("-z", "--beta", dest="beta", default=1.0,
+#                     help="Coefficient of KL Divergence term")
+# parser.add_argument("-q", "--lr", dest="lr", default=1e-3,
+#                     help="Learning Rate")
 
-dataset = JTNNDataset(data=args.train, vocab=args.vocab, training=True)
+# ap = {"train": 'train',
+#       "vocab": 'vocab',
+#       "save_path": './',
+#       "model_path": None,
+#       "batch_size": 40,
+#       "hidden_size": 200,
+#       "latent_size": 56,
+#       "depth": 3,
+#       "beta": 1.0,
+#       "lr": 1e-3
+#     }
+
+with open('config_single_exp_train.json') as fp:
+    ap = json.load(fp)
+
+
+args = ap
+# parser.parse_args()
+
+dataset = JTNNDataset(data=args['train'], vocab=args['vocab'], training=True)
 vocab_file = dataset.vocab_file
 
-batch_size = int(args.batch_size)
-hidden_size = int(args.hidden_size)
-latent_size = int(args.latent_size)
-depth = int(args.depth)
-beta = float(args.beta)
-lr = float(args.lr)
+batch_size = int(args['batch_size'])
+hidden_size = int(args['hidden_size'])
+latent_size = int(args['latent_size'])
+depth = int(args['depth'])
+beta = float(args['beta'])
+lr = float(args['lr'])
 
 model = model_zoo.chem.DGLJTNNVAE(vocab_file=vocab_file,
                                   hidden_size=hidden_size,
                                   latent_size=latent_size,
                                   depth=depth)
 
-if args.model_path is not None:
-    model.load_state_dict(torch.load(args.model_path))
+if args['model_path'] is not None:
+    model.load_state_dict(torch.load(args['model_path']))
 else:
     for param in model.parameters():
         if param.dim() == 1:
