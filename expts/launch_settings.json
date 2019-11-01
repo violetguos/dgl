@@ -1,8 +1,8 @@
 {
-    "GitRepository": "git@bitbucket.org/invivoai/moms.git",
-    "GitBranch": "generative-models",
+    "GitRepository": "bitbucket.org/invivoai/moms.git",
+    "GitBranch": "test",
     "GitInnerPath": "moms/src/generative_models/jtnn",
-    "InstanceCount": 2,
+    "InstanceCount": 1,
     "MaxRuntime": 60,
     "SpotPrice": "On-Demand",
     "LaunchSpecification":  {
@@ -18,7 +18,7 @@
                                         "DeviceName": "/dev/sdb",
                                         "Ebs": {
                                             "DeleteOnTermination": true,
-                                            "VolumeSize": 10
+                                            "VolumeSize": 15
                                         }
                                     }
                                 ]
