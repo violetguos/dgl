@@ -145,9 +145,17 @@ def reconstruct():
     return acc / tot
 
 def latent_exp():
-    mol = datautils.sample_prior(model, latent_size)
-    print(mol)
-
+    """
+    Directly sampling from the latent space instead of doing a reconstruction of the original input
+    :return: smiles molecules
+    """
+    # 450 is the correct latent dim of the pretrained model
+    # the following is 1 iteration of sampling and decoding
+    tree_vec = nnutils.create_var(torch.randn(1, 450), False)
+    mol_vec = nnutils.create_var(torch.randn(1, 450), False)
+    tree_vec, mol_vec, z_mean, z_log_var = model.sample(tree_vec,  mol_vec)
+    smiles = model.decode(tree_vec, mol_vec)
+    print(type(smiles))
 
 if __name__ == '__main__':
     latent_sample = latent_exp()
