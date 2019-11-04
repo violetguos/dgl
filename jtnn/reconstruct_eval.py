@@ -92,6 +92,8 @@ def reconstruct():
 
     # Just an example of molecule decoding; in reality you may want to sample
     # tree and molecule vectors.
+    # this only corresponds to the Section 3.1 of the paper.
+
     acc = 0.0
     tot = 0
     with torch.no_grad():
@@ -99,6 +101,7 @@ def reconstruct():
             tot += 1
 
             gt_smiles = batch['mol_trees'][0].smiles
+            print("batch")
             # print(gt_smiles)
             model.move_to_cuda(batch)
             try:
