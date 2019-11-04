@@ -6,7 +6,7 @@ from dgl import model_zoo
 import rdkit
 import numpy as np
 
-from jtnn.jtnn import *
+from jtnn import chemutils, datautils, mol_tree, nnutils
 import json
 
 def worker_init_fn(id_):
@@ -50,7 +50,7 @@ worker_init_fn(None)
 args = ap
 
 
-dataset = JTNNDataset(data=args['train'], vocab=args['vocab'], training=False)
+dataset = datautils.JTNNDataset(data=args['train'], vocab=args['vocab'], training=False)
 vocab_file = dataset.vocab_file
 
 hidden_size = int(args['hidden_size'])
@@ -61,13 +61,19 @@ model = model_zoo.chem.DGLJTNNVAE(vocab_file=vocab_file,
                                   hidden_size=hidden_size,
                                   latent_size=latent_size,
                                   depth=depth)
+# this VAE has no decoding from a random vector,
+# we need to adapt the original definition here
+# https://github.com/violetguos/icml18-jtnn/blob/master/jtnn/jtnn_vae.py
+# and the decoder.decode
+# https://github.com/violetguos/icml18-jtnn/blob/28ed03fcb3f0a79f44f73eefc0bcad613ea39167/jtnn/jtnn_dec.py#L187
+# note the extra prob_decode argument
 
 if args['model_path'] is not None:
     model.load_state_dict(torch.load(args['model_path']))
 else:
     model = model_zoo.chem.load_pretrained("JTNN_ZINC")
 
-model = cuda(model)
+model = nnutils.cuda(model)
 model.eval()
 print("Model #Params: %dK" %
       (sum([x.nelement() for x in model.parameters()]) / 1000,))
@@ -85,7 +91,7 @@ def reconstruct():
         batch_size=1,
         shuffle=False,
         num_workers=0,
-        collate_fn=JTNNCollator(dataset.vocab, False),
+        collate_fn=datautils.JTNNCollator(dataset.vocab, False),
         drop_last=True,
         worker_init_fn=worker_init_fn,
         )
@@ -101,8 +107,15 @@ def reconstruct():
             tot += 1
 
             gt_smiles = batch['mol_trees'][0].smiles
-            print("batch")
-            # print(gt_smiles)
+            print("batch", batch)
+            # batch {'mol_trees': [DGLGraph(num_nodes=11, num_edges=20,
+            #          ndata_schemes={'wid': Scheme(shape=(), dtype=torch.int64)}
+            #          edata_schemes={})],
+            #          'mol_graph_batch': DGLGraph(num_nodes=22, num_edges=48,
+            #          ndata_schemes={'x': Scheme(shape=(39,), dtype=torch.float32)}
+            #          edata_schemes={'x': Scheme(shape=(11,), dtype=torch.float32),
+            #          'src_x': Scheme(shape=(39,), dtype=torch.float32)})
+            print(gt_smiles)
             model.move_to_cuda(batch)
             try:
                 _, tree_vec, mol_vec = model.encode(batch)
@@ -131,7 +144,11 @@ def reconstruct():
                                                                                        len(dataloader), acc / tot))
     return acc / tot
 
+def latent_exp():
+    mol = datautils.sample_prior(model, latent_size)
+    print(mol)
+
 
 if __name__ == '__main__':
-    reconstruct_acc = reconstruct()
-    print("Reconstruction Accuracy: {}".format(reconstruct_acc))
+    latent_sample = latent_exp()
+
