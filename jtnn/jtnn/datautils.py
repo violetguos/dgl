@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 import dgl
 from dgl.data.utils import download, extract_archive, get_download_dir
 import os
-
+from jtnn.nnutils import create_var
 from .mol_tree import Vocab, DGLMolTree
 from .chemutils import mol2dgl_dec, mol2dgl_enc
 
@@ -229,3 +229,32 @@ class JTNNCollator(object):
             })
 
         return result
+
+
+def sample_prior(vae, latent_size, prob_decode=False):
+    """
+    sampling functions taken from the ICML author's repo
+    :param vae: the vae model that has encoder and decoder, defined in model_zoo
+    :param latent_size: the latent dimension that's defined in the args
+    :return: new vector sampled from Normal(0, I) and decoded
+    """
+    tree_vec = create_var(torch.randn(1, int(latent_size / 2)), False)
+    mol_vec = create_var(torch.randn(1, int(latent_size / 2)), False)
+    return vae.decode(tree_vec, mol_vec, prob_decode)
+
+def sample_eval(vae, latent_size):
+    """
+    sampling functions taken from the ICML author's repo
+    :param vae: the vae model that has encoder and decoder, defined in model_zoo
+    :param latent_size: the latent dimension that's defined in the args
+    :return: new vector sampled from Normal(0, I) and decoded
+    """
+    print("latent_size", type(latent_size))
+    latent_size = int(latent_size)
+    tree_vec = create_var(torch.randn(1, int(latent_size / 2)), False)
+    mol_vec = create_var(torch.randn(1, int(latent_size / 2)), False)
+    all_smiles = []
+    for i in range(100):
+        s = vae.decode(tree_vec, mol_vec, prob_decode=True)
+        all_smiles.append(s)
+    return all_smiles

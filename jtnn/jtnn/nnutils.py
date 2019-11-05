@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 
 import os
 
@@ -47,3 +48,10 @@ class GRUUpdate(nn.Module):
 def move_dgl_to_cuda(g):
     g.ndata.update({k: cuda(g.ndata[k]) for k in g.ndata})
     g.edata.update({k: cuda(g.edata[k]) for k in g.edata})
+
+
+def create_var(tensor, requires_grad=None):
+    if requires_grad is None:
+        return Variable(tensor) #.cuda()
+    else:
+        return Variable(tensor, requires_grad=requires_grad) #.cuda()
