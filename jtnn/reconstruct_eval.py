@@ -15,77 +15,45 @@ def worker_init_fn(id_):
     lg = rdkit.RDLogger.logger()
     lg.setLevel(rdkit.RDLogger.CRITICAL)
 
-# ap = {"train":'test',
-#       "vocab": 'vocab',
-#       "model_path": None,
-#       "hidden_size": 200,
-#       "latent_size": 56,
-#       "depth": 3}
-#
-# with open('expts/config_single_exp.json', 'w') as outfile:
-#     json.dump(ap, outfile)
-
-with open('expts/config_single_exp.json') as fp:
-    ap = json.load(fp)
-
-worker_init_fn(None)
-
-# parser = argparse.ArgumentParser(description="Evaluation for JTNN",
-#                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-# parser.add_argument("-t", "--train", dest="train",
-#                     default='test', help='Training file name')
-# parser.add_argument("-v", "--vocab", dest="vocab",
-#                     default='vocab', help='Vocab file name')
-# parser.add_argument("-m", "--model", dest="model_path", default=None,
-#                     help="Pre-trained model to be loaded for evalutaion. If not specified,"
-#                          " would use pre-trained model from model zoo")
-# parser.add_argument("-w", "--hidden", dest="hidden_size", default=200,
-#                     help="Hidden size of representation vector, "
-#                          "should be consistent with pre-trained model")
-# parser.add_argument("-l", "--latent", dest="latent_size", default=56,
-#                     help="Latent Size of node(atom) features and edge(atom) features, "
-#                          "should be consistent with pre-trained model")
-# parser.add_argument("-d", "--depth", dest="depth", default=3,
-#                     help="Depth of message passing hops, "
-#                          "should be consistent with pre-trained model")
-# args = parser.parse_args()
-args = ap
 
 
-dataset = datautils.JTNNDataset(data=args['train'], vocab=args['vocab'], training=False)
-vocab_file = dataset.vocab_file
+def setup():
+    with open('expts/config_single_exp.json') as fp:
+        ap = json.load(fp)
 
-hidden_size = int(args['hidden_size'])
-latent_size = int(args['latent_size'])
-depth = int(args['depth'])
+    worker_init_fn(None)
 
-model = model_zoo.chem.DGLJTNNVAE(vocab_file=vocab_file,
-                                  hidden_size=hidden_size,
-                                  latent_size=latent_size,
-                                  depth=depth)
-# this VAE has no decoding from a random vector,
-# we need to adapt the original definition here
-# https://github.com/violetguos/icml18-jtnn/blob/master/jtnn/jtnn_vae.py
-# and the decoder.decode
-# https://github.com/violetguos/icml18-jtnn/blob/28ed03fcb3f0a79f44f73eefc0bcad613ea39167/jtnn/jtnn_dec.py#L187
-# note the extra prob_decode argument
+    args = ap
 
-if args['model_path'] is not None:
-    model.load_state_dict(torch.load(args['model_path']))
-else:
-    model = model_zoo.chem.load_pretrained("JTNN_ZINC")
+    dataset = datautils.JTNNDataset(data=args['train'], vocab=args['vocab'], training=False)
+    vocab_file = dataset.vocab_file
 
-model = nnutils.cuda(model)
-model.eval()
-print("Model #Params: %dK" %
-      (sum([x.nelement() for x in model.parameters()]) / 1000,))
+    hidden_size = int(args['hidden_size'])
+    latent_size = int(args['latent_size'])
+    depth = int(args['depth'])
 
-MAX_EPOCH = 100
-PRINT_ITER = 20
+    model = model_zoo.chem.DGLJTNNVAE(vocab_file=vocab_file,
+                                      hidden_size=hidden_size,
+                                      latent_size=latent_size,
+                                      depth=depth)
+
+    if args['model_path'] is not None:
+        model.load_state_dict(torch.load(args['model_path']))
+    else:
+        model = model_zoo.chem.load_pretrained("JTNN_ZINC")
+
+    model = nnutils.cuda(model)
+    model.eval()
+    print("Model #Params: %dK" %
+          (sum([x.nelement() for x in model.parameters()]) / 1000,))
+
+
+    return model, args
 
 
 def reconstruct():
-    subset_indices = np.arange(50)
+    model, args = setup()
+    dataset = datautils.JTNNDataset(data=args['train'], vocab=args['vocab'], training=False)
 
     dataset.training = False
     dataloader = DataLoader(
@@ -109,15 +77,7 @@ def reconstruct():
             tot += 1
 
             gt_smiles = batch['mol_trees'][0].smiles
-            print("batch", batch)
-            # batch {'mol_trees': [DGLGraph(num_nodes=11, num_edges=20,
-            #          ndata_schemes={'wid': Scheme(shape=(), dtype=torch.int64)}
-            #          edata_schemes={})],
-            #          'mol_graph_batch': DGLGraph(num_nodes=22, num_edges=48,
-            #          ndata_schemes={'x': Scheme(shape=(39,), dtype=torch.float32)}
-            #          edata_schemes={'x': Scheme(shape=(11,), dtype=torch.float32),
-            #          'src_x': Scheme(shape=(39,), dtype=torch.float32)})
-            print(gt_smiles)
+
             model.move_to_cuda(batch)
             try:
                 _, tree_vec, mol_vec = model.encode(batch)
@@ -146,6 +106,7 @@ def reconstruct():
                                                                                        len(dataloader), acc / tot))
     return acc / tot
 
+
 def latent_exp(output_path=None):
     """
     Directly sampling from the latent space instead of doing a reconstruction of the original input
@@ -155,9 +116,11 @@ def latent_exp(output_path=None):
     # the following is 1 iteration of sampling and decoding
 
     epoch = 50
+    model, args =setup()
+    hidden_size = args['hidden_size']
     for i in range(epoch):
-        tree_vec = nnutils.create_var(torch.randn(1, 450), False)
-        mol_vec = nnutils.create_var(torch.randn(1, 450), False)
+        tree_vec = nnutils.create_var(torch.randn(1, hidden_size), False)
+        mol_vec = nnutils.create_var(torch.randn(1, hidden_size), False)
         tree_vec, mol_vec, z_mean, z_log_var = model.sample(tree_vec,  mol_vec)
         try:
             smiles = model.decode(tree_vec, mol_vec)

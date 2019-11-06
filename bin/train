@@ -6,7 +6,7 @@ import sys
 import traceback
 import click
 import numpy as np
-from jtnn.reconstruct_eval import latent_exp as run_experiment
+from jtnn.train import train as run_experiment
 
 TORCH = True
 try:
