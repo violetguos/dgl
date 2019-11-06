@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 import dgl
 from dgl.data.utils import download, extract_archive, get_download_dir
 import os
-from jtnn.nnutils import create_var
+from jtnn.jtnn.nnutils import create_var
 from .mol_tree import Vocab, DGLMolTree
 from .chemutils import mol2dgl_dec, mol2dgl_enc
 
